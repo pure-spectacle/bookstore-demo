@@ -1,0 +1,13 @@
+# Docker Compose File for Application Container with Docker bindings
+version: '3.8'
+
+services:
+  dev:
+    image: ghcr.io/octodemo/development-containers/java:base-202401-r1
+    command: sleep infinity
+    network_mode: host
+
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock

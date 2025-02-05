@@ -1,0 +1,150 @@
+---
+
+- hosts: localhost
+  tasks:
+    - name: Parse Terraform Context
+      set_fact:
+        context: "{{ lookup('env', 'DEMO_PARAMETERS_JSON_BASE64') | b64decode | from_json }}"
+        azure_subscription_id: "{{ lookup('env', 'AZURE_SUBSCRIPTION_ID') }}"
+        github_token: "{{ lookup('env', 'WORKFLOW_GITHUB_ACTIONS_TOKEN') }}"
+        github_api_url: "{{ lookup('env', 'GITHUB_API_URL') }}"
+
+    - name: Validate Context
+      assert:
+        that:
+          - context is defined
+          - context.github_repository is defined
+          - context.github_repository.owner is defined
+          - context.github_repository.repo is defined
+
+          - context.github_instance_type is defined
+
+          - github_token is defined
+          - github_api_url is defined
+
+          - azure_subscription_id is defined
+          - (azure_subscription_id | length) > 0
+
+    - name: Set Play Facts
+      set_fact:
+        azure_resource_group_name_old: 'bookstore-demo-{{ context.github_repository.owner }}-{{ context.github_repository.repo }}'
+        azure_resource_group_name: '{{ context.github_instance_type }}{%- if context.github_instance_tenant_name is defined -%}-{{context.github_instance_tenant_name}}{%- endif -%}--{{ context.github_repository.owner }}--{{ context.github_repository.repo }}--bookstore-demo'
+
+
+
+    - name: Get existing resource group
+      azure.azcollection.azure_rm_resourcegroup_info:
+        name: "{{ azure_resource_group_name }}"
+      register: existing_resource_group
+
+    # Only look up and try to remove other resources if the specified resource group actually exists
+    - block:
+        - name: Discover Azure Application Service Plan
+          azure.azcollection.azure_rm_appserviceplan_info:
+            resource_group: "{{ azure_resource_group_name }}"
+          register: existing_service_plans
+
+        # Lookup and remove webapps if there is a service plan present
+        - block:
+            - name: Discover Azure WebApp Instances
+              azure.azcollection.azure_rm_webapp_info:
+                resource_group: "{{ azure_resource_group_name }}"
+              register: existing_webapps
+
+            - name: Destroy WebApps under Resource Group
+              azure.azcollection.azure_rm_webapp:
+                resource_group: "{{ item.resource_group }}"
+                name: "{{ item.name }}"
+                state: absent
+              loop: "{{ existing_webapps.webapps }}"
+              when: existing_webapps.webapps | length > 0
+
+          when: existing_service_plans.appserviceplans | length > 0
+
+        - name: Discover Azure Deployments
+          azure.azcollection.azure_rm_deployment_info:
+            resource_group: "{{ azure_resource_group_name }}"
+          register: existing_deployments
+
+        - name: Sign in to Azure
+          command: 'az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_SECRET --tenant $AZURE_TENANT'
+
+        - name: Destroy Existing Deployments under Resource Group
+          # This deployment destruction via the module results in the deployment AND resource group being taken out
+          # using the az command line to work around this for now
+          # azure.azcollection.azure_rm_deployment:
+          #   resource_group: '{{ item.resource_group }}'
+          #   name: '{{ item.name }}'
+          #   state: absent
+          command: 'az deployment group delete --name {{ item.name }} --resource-group {{ item.resource_group }} --subscription {{ azure_subscription_id }}'
+          loop: "{{ existing_deployments.deployments }}"
+          when: existing_deployments.deployments | length > 0
+
+      when: existing_resource_group.resourcegroups | length > 0
+
+    ################################################################################################################################
+    # Duplicated so that we can transition to new state - remove in the future - PM
+    ################################################################################################################################
+    - name: Get existing resource group - old
+      azure.azcollection.azure_rm_resourcegroup_info:
+        name: "{{ azure_resource_group_name_old }}"
+      register: existing_resource_group_old
+
+    # Only look up and try to remove other resources if the specified resource group actually exists
+    - block:
+        - name: Discover Azure Application Service Plan
+          azure.azcollection.azure_rm_appserviceplan_info:
+            resource_group: "{{ azure_resource_group_name_old }}"
+          register: existing_service_plans
+
+        # Lookup and remove webapps if there is a service plan present
+        - block:
+            - name: Discover Azure WebApp Instances
+              azure.azcollection.azure_rm_webapp_info:
+                resource_group: "{{ azure_resource_group_name_old }}"
+              register: existing_webapps
+
+            - name: Destroy WebApps under Resource Group
+              azure.azcollection.azure_rm_webapp:
+                resource_group: "{{ item.resource_group }}"
+                name: "{{ item.name }}"
+                state: absent
+              loop: "{{ existing_webapps.webapps }}"
+              when: existing_webapps.webapps | length > 0
+
+          when: existing_service_plans.appserviceplans | length > 0
+
+        - name: Discover Azure Deployments
+          azure.azcollection.azure_rm_deployment_info:
+            resource_group: "{{ azure_resource_group_name_old }}"
+          register: existing_deployments
+
+        - name: Sign in to Azure
+          command: 'az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_SECRET --tenant $AZURE_TENANT'
+
+        - name: Destroy Existing Deployments under Resource Group
+          # This deployment destruction via the module results in the deployment AND resource group being taken out
+          # using the az command line to work around this for now
+          # azure.azcollection.azure_rm_deployment:
+          #   resource_group: '{{ item.resource_group }}'
+          #   name: '{{ item.name }}'
+          #   state: absent
+          command: 'az deployment group delete --name {{ item.name }} --resource-group {{ item.resource_group }} --subscription {{ azure_subscription_id }}'
+          loop: "{{ existing_deployments.deployments }}"
+          when: existing_deployments.deployments | length > 0
+
+      when: existing_resource_group_old.resourcegroups | length > 0
+
+
+
+    # Remove any containers that might have been published from the repository to GHCR
+    - name: Delete repository containers
+      uri:
+        url: '{{ github_api_url }}/orgs/{{ context.github_repository.owner }}/packages/container/{{ context.github_repository.repo }}-app'
+        method: DELETE
+        headers:
+          Accept: application/vnd.github.v3+json
+          Authorization: bearer {{ github_token }}
+          X-GitHub-Api-Version: '2022-11-28'
+        # Adding 502 here for now as the API is broken https://github.com/github/c2c-package-registry/issues/5065
+        status_code: 204, 404, 502

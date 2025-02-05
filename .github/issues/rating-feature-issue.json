@@ -1,0 +1,7 @@
+{
+  "title": "Add a rating feature to the bookstore",
+  "labels": [
+    "enhancement"
+  ],
+  "body": "## Is your feature request related to a problem? Please describe\nA lot of the users have said that there's no clear way to distinguish the quality of the books in our portal.\n## Describe the solution you'd like\nI was thinking we should have a rating feature or something similar to that to allow users to quickly pick up most highest rated books from the other users.\n## Describe alternatives you've considered\nSupport review submissions. Initially it should be sufficient if we allow users to just provide a rating between one and five stars.\n## Additional context\nWith the UX team we cracked something up in a few minutes, let me know what you think and we can go into more detail if you'd like to:\n![rating-wireframe](https://user-images.githubusercontent.com/1982588/84478217-3a812900-ac91-11ea-9f04-4ac1c82b9760.png)\n## Next steps\nIf we decide to go ahead:\n- [ ] Get the design done\n- [ ] Software Development\n- [ ] Testing and Review\n"
+}

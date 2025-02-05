@@ -1,0 +1,39 @@
+trigger: pr_review
+title: Create Pull Request Review
+description: Create a Pull Request review
+
+surfaces:
+  - pull_request
+
+steps:
+  - type: form
+    style: modal
+    body:
+      - type: dropdown
+        attributes:
+          label: Outcome
+          description: The review outcome
+          options:
+            - label: approve
+              value: approve
+            - label: comment
+              value: comment
+            - label: request changes
+              value: request_changes
+        validations:
+          required: true
+
+      - type: input
+        attributes:
+          label: Review Comment
+          description: The pull request review comment
+          placeholder: Comment
+        validations:
+          required: false
+
+    actions:
+      submit: Create
+      cancel: Cancel
+
+  - type: repository_dispatch
+    eventType: command_pull_request_review

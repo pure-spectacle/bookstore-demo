@@ -1,0 +1,38 @@
+{
+  "name": "Bookstore v3.5",
+  "version": 1,
+
+  "lifecycle": {
+    "warning": 7,
+    "terminate": 14
+  },
+
+  "resources": [
+    "github",
+    "azure"
+  ],
+
+  "framework": {
+    "variant": "terraform",
+
+    "templated_files": [
+      ".github/workflows/build_test_publish.yml",
+      ".github/workflows/container_scan.yml"
+    ],
+
+    "terraform": {
+      "stack_path": ".demo/terraform",
+
+      "lifecycle_scripts": {
+        "create": {
+          "post": ".demo/scripts/create_after.sh",
+          "finalize": ".demo/scripts/create_finalize.sh"
+        },
+
+        "destroy": {
+          "pre": ".demo/scripts/destroy_before.sh"
+        }
+      }
+    }
+  }
+}

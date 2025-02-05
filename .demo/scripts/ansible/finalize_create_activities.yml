@@ -1,0 +1,41 @@
+---
+
+- hosts: localhost
+  tasks:
+    - name: Parse demo parameters and context
+      set_fact:
+        # Unpack the base64 encoded JSON string into a dictionary
+        context: "{{ lookup('env', 'DEMO_PARAMETERS_JSON_BASE64') | b64decode | from_json }}"
+
+        demo_repository_id: "{{ lookup('env', 'DEMO_REPOSITORY_ID') }}"
+
+        # Use the token for the hosting organization of the demo repository
+        github_token: "{{ lookup('env', 'WORKFLOW_GITHUB_DEMO_ORGANIZATION_TOKEN') }}"
+
+        github_api_url: "{{ lookup('env', 'GITHUB_API_URL') }}"
+
+    - name: Validate Context
+      assert:
+        that:
+          - context is defined
+
+          - context.github_repository is defined
+          - context.github_repository.owner is defined
+          - context.github_repository.repo is defined
+
+          - github_token is defined
+          - github_api_url is defined
+
+          - demo_repository_id is defined
+
+    - name: Invoke repository initialization workflow
+      uri:
+        url: '{{ github_api_url }}/repos/{{ context.github_repository.owner }}/{{ context.github_repository.repo }}/actions/workflows/initialize.yml/dispatches'
+        method: POST
+        headers:
+          Accept: application/vnd.github.v3+json
+          Authorization: bearer {{ github_token }}
+        body_format: json
+        body:
+          ref: "main"
+        status_code: 204

@@ -1,0 +1,61 @@
+---
+
+- hosts: localhost
+  tasks:
+    - name: Parse demo parameters and context
+      set_fact:
+        # Unpack the base64 encoded JSON string into a dictionary
+        context: "{{ lookup('env', 'DEMO_PARAMETERS_JSON_BASE64') | b64decode | from_json }}"
+
+        demo_repository_id: "{{ lookup('env', 'DEMO_REPOSITORY_ID') }}"
+
+        # Use the token for the hosting organization of the demo repository
+        github_token: "{{ lookup('env', 'WORKFLOW_GITHUB_DEMO_ORGANIZATION_TOKEN') }}"
+
+        github_api_url: "{{ lookup('env', 'GITHUB_API_URL') }}"
+
+    - name: Validate Context
+      assert:
+        that:
+          - context is defined
+
+          - context.github_repository is defined
+          - context.github_repository.owner is defined
+          - context.github_repository.repo is defined
+
+          - github_token is defined
+          - github_api_url is defined
+
+          - demo_repository_id is defined
+
+    - name: Fetch all security configurations
+      uri:
+        url: '{{ github_api_url }}/orgs/{{ context.github_repository.owner }}/code-security/configurations'
+        method: GET
+        return_content: yes
+        headers:
+          Accept: application/vnd.github.v3+json
+          Authorization: bearer {{ github_token }}
+          X-GitHub-Api-Version: '2022-11-28'
+        status_code: 200
+      register: list_security_configurations
+
+    - name: Show security configurations
+      debug:
+        var: list_security_configurations.json
+
+    - name: Fetch security configuration id
+      set_fact:
+        security_configuration_id: "{{ list_security_configurations.json | selectattr('name', 'equalto', 'GitHub Demo -- Default Security Configuration') | map(attribute='id') | list | first }}"
+
+    - name: Attach repository to the security configuration
+      uri:
+        url: '{{ github_api_url }}/orgs/{{ context.github_repository.owner }}/code-security/configurations/{{ security_configuration_id }}/attach'
+        method: POST
+        headers:
+          Accept: application/vnd.github.v3+json
+          Authorization: bearer {{ github_token }}
+          X-GitHub-Api-Version: '2022-11-28'
+        body_format: json
+        body: '{"scope": "selected", "selected_repository_ids": [ {{ demo_repository_id | int }} ]}'
+        status_code: 202

@@ -1,0 +1,63 @@
+{
+  "dockerComposeFile": [
+    "docker-compose.yml"
+  ],
+  "service": "dev",
+  "forwardPorts": [
+    8080
+  ],
+  "portsAttributes": {
+    "2222": {
+      "label": "SSH",
+      "onAutoForward": "silent"
+    },
+    "8080": {
+      "label": "Application",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-docker",
+        "redhat.java",
+        "vscjava.vscode-maven",
+        "vscjava.vscode-java-debug",
+        "vscjava.vscode-java-dependency",
+        "vscjava.vscode-java-test",
+        "dgileadi.java-decompiler",
+        "redhat.vscode-xml",
+        "redhat.vscode-yaml",
+        "GitHub.copilot",
+        "GitHub.copilot-labs"
+      ],
+
+      "settings": {
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "bash",
+            "icon": "terminal-bash"
+          }
+        },
+        "java.project.importOnFirstTimeStartup": "automatic",
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "java.server.launchMode": "Standard",
+        "java.test.message.hintForSetingDefaultConfig": false,
+        "maven.pomfile.autoUpdateEffectivePOM": true,
+
+        "telemetry.enableTelemetry": false,
+        "telemetry.telemetryLevel": "off",
+        "redhat.telemetry.enabled": false,
+
+        "extensions.ignoreRecommendations": true,
+      }
+    }
+  },
+  "postCreateCommand": "mvn compile",
+
+  // https://docs.github.com/en/codespaces/setting-up-your-project-for-codespaces/setting-a-minimum-specification-for-codespace-machines
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb"
+  }
+}
