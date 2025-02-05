@@ -1,5 +1,7 @@
 # Demo Bookstore v3
 
+Cats
+
 This is a simple Maven project that builds a standalone JAR which contains a Jetty webserver and a simple bookstore servlet. The application is able
 to be built into a container and then available to be deployed as an Azure Web App.
 
