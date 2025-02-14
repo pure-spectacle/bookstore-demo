@@ -25,6 +25,9 @@ public class BookService {
     }
 
     public List<Book> searchBooksByTitle(String name) throws BookServiceException {
-        return this.booksDatabase.getBooksByTitle(name);
+    if (name.length() > 50) {
+        throw new BookServiceException("The title must be 50 characters or less.");
     }
+    return this.booksDatabase.getBooksByTitle(name);
+}
 }
