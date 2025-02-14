@@ -1,5 +1,8 @@
 name: "GitHub Advanced Security - Metrics Report Action"
 on:
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -7,24 +10,20 @@ jobs:
     name: GitHub Advanced Security - Metrics Report Action
     runs-on: ubuntu-latest
     steps:
-      - name: Get Token
-        id: get_workflow_token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.APPLICATION_ID }}
-          private-key: ${{ secrets.APPLICATION_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: ${{ github.event.repository.name }} # or remove this line to generate toke to all repos in org
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
       - name: Generate GHAS Metrics Report
-        uses: theztefan/ghas-metrics-report
+        uses: theztefan/ghas-metrics-report@v1
         env:
-          GITHUB_TOKEN: ${{ steps.get_workflow_token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         with:
           repo: ${{ github.event.repository.name }}
-          org: ${{ github.repository_owner }}
+          org: pure-spectacle
           features: "dependabot, code-scanning, secret-scanning"
           frequency: "daily"
           output-format: "pdf"
+          
       - name: Upload GHAS metrics report as artifact
         uses: actions/upload-artifact@v4
         with:
