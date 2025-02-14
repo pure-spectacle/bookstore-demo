@@ -1,6 +1,7 @@
 name: "GitHub Advanced Security - Metrics Report Action"
 on:
-  workflow_dispatch:
+  pull_request:
+    branches: [main]
 
 jobs:
   ghas-metrics-report:
